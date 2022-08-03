@@ -237,7 +237,7 @@ def main(unused_args):
     metrics = np.zeros((FLAGS.num_epochs, 6))
     
     
-    if FLAGS.training_method in ['cte', 'ctre', 'ctre_sim']:
+    if FLAGS.training_method in ['cte', 'ctre_seq', 'ctre_sim']:
         # array of all activations
         a0_all = tf.placeholder(tf.float32, shape = (num_batches*FLAGS.batch_size, params["dim"] ))
         a1_all = tf.placeholder(tf.float32, shape = (num_batches*FLAGS.batch_size, args.num_hidden ))     
@@ -261,7 +261,7 @@ def main(unused_args):
     
 
         
-    if FLAGS.training_method in ['cte', 'ctre', 'ctre_sim']:
+    if FLAGS.training_method in ['cte', 'ctre_seq', 'ctre_sim']:
         cal_cosine1 = opt._score_cosine[0].assign(compute_cosine_distances(a0_all, a1_all))
         cal_cosine2 = opt._score_cosine[1].assign(compute_cosine_distances(a1_all, a2_all))
         cal_cosine3 = opt._score_cosine[2].assign(compute_cosine_distances(a2_all, a3_all))
@@ -367,7 +367,7 @@ def main(unused_args):
             else:
                 early_stop += 1
             #print("early_stop = ", early_stop)
-            if early_stop == args.early_stop_epoch and FLAGS.training_method in ['ctre']:
+            if early_stop == args.early_stop_epoch and FLAGS.training_method in ['ctre_seq']:
                 print("\n\n\n\n ###########################################################################\n\n")
                 print("\n\nStart Random Addition")
                 print("\n\n\n\n ###########################################################################")
@@ -401,13 +401,13 @@ def main(unused_args):
           ##################################################################################
           ###############             Compute cosine similarity        #####################
           ##################################################################################
-          if FLAGS.training_method in ['cte', 'ctre', 'ctre_sim'] and (i % (num_batches)) == 0 and i >0 : 
+          if FLAGS.training_method in ['cte', 'ctre_seq', 'ctre_sim'] and (i % (num_batches)) == 0 and i >0 : 
 
             import numpy as np
             tic3 = time.time() 
             
 
-            if FLAGS.training_method in ['cte', 'ctre_sim'] or (FLAGS.training_method in ['ctre'] and not flag_ctre):
+            if FLAGS.training_method in ['cte', 'ctre_sim'] or (FLAGS.training_method in ['ctre_seq'] and not flag_ctre):
                 #tic1 = time.time() 
                 print("@@@@ computing cosine @@@@")
                 a02 = [];a12 = [];a22 = [];a32 = [];a42 = [];
@@ -434,7 +434,7 @@ def main(unused_args):
              
                 print("Computing cosine matrix time = ", time.time() - tic3, flush=True)
             
-            elif  FLAGS.training_method in ['ctre'] and flag_ctre:
+            elif  FLAGS.training_method in ['ctre_seq'] and flag_ctre:
                 print("random addition")
                 sess.run(rand_cosine1)
                 sess.run(rand_cosine2)

@@ -387,15 +387,7 @@ def main(unused_args):
             ##############   summary   #################
             np.savetxt(FLAGS.save_path +"results.txt", metrics)
                 
-            
-            log_str = 'Loss test: %.4f, Accuracy test: %.4f' % ( test_loss, test_accuracy)
-            print(log_str, flush=True) 
-            log_str =  '\nglobal_sparsity_val: %.4f : Layer sparsities: %.4f, %.4f, %.4f, %.4f ' % (global_sparsity_val, 
-                weight_sparsity[0], weight_sparsity[1], weight_sparsity[2], weight_sparsity[3])
-            print(log_str, flush=True)
-            tic = time.time()
-   
-            
+     
             
             
           ##################################################################################

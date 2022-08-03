@@ -34,7 +34,13 @@ import time
 from utils import *
 from model_utils import *
 
-
+def compute_cosine_distances(a, b):
+    a = tf.transpose(a)
+    b = tf.transpose(b)
+    normalize_a = tf.nn.l2_normalize(a,1)        
+    normalize_b = tf.nn.l2_normalize(b,1)
+    similarity = tf.abs(tf.matmul(normalize_a, normalize_b, transpose_b=True))
+    return similarity
 
 ########################################################################################
 #### read arguments
@@ -44,6 +50,7 @@ def main(unused_args):
   import numpy as np
   args = parse_arguments()
   FLAGS = define_flags(args)
+
   # set seed
   print("\n\n************  seed = ", FLAGS.seed, " ************")
   tf.set_random_seed(FLAGS.seed)
@@ -210,7 +217,8 @@ def main(unused_args):
   filename = os.path.join(FLAGS.save_path, hyper_params_string + '.txt')
   merged_summary_op = tf.summary.merge_all()
 
-
+  print(FLAGS.save_path +"log.out")
+  sys.stdout = open(FLAGS.save_path +"log.out", 'w')
 
   # Run session.
   print("\n\n\n****************        Training starts         ***************", flush=True)
@@ -231,17 +239,12 @@ def main(unused_args):
     
     if FLAGS.training_method in ['cte', 'ctre', 'ctre_sim']:
         # array of all activations
-        a0_all = tf.Variable(tf.zeros([num_batches*FLAGS.batch_size, params["dim"] ]), trainable =False, name="a0") 
-        a1_all = tf.Variable(tf.zeros([num_batches*FLAGS.batch_size, args.num_hidden ]), trainable =False)      
-        a2_all = tf.Variable(tf.zeros([num_batches*FLAGS.batch_size, args.num_hidden]), trainable =False)  
-        a3_all = tf.Variable(tf.zeros([num_batches*FLAGS.batch_size, args.num_hidden ]) , trainable =False) 
-        a4_all = tf.Variable(tf.zeros([num_batches*FLAGS.batch_size, params["num_classes"]]) , trainable =False) 
-        # reset activations
-        reset_a_all_0  = a0_all.assign(tf.zeros([num_batches*FLAGS.batch_size, params["dim"] ]))
-        reset_a_all_1  = a1_all.assign(tf.zeros([num_batches*FLAGS.batch_size, args.num_hidden ]))
-        reset_a_all_2  = a2_all.assign(tf.zeros([num_batches*FLAGS.batch_size, args.num_hidden ]))
-        reset_a_all_3  = a3_all.assign(tf.zeros([num_batches*FLAGS.batch_size, args.num_hidden ]))
-        reset_a_all_4  = a4_all.assign(tf.zeros([num_batches*FLAGS.batch_size, params["num_classes"] ]))
+        a0_all = tf.placeholder(tf.float32, shape = (num_batches*FLAGS.batch_size, params["dim"] ))
+        a1_all = tf.placeholder(tf.float32, shape = (num_batches*FLAGS.batch_size, args.num_hidden ))     
+        a2_all = tf.placeholder(tf.float32, shape = (num_batches*FLAGS.batch_size, args.num_hidden))
+        a3_all = tf.placeholder(tf.float32, shape = (num_batches*FLAGS.batch_size, args.num_hidden ) )
+        a4_all = tf.placeholder(tf.float32, shape = (num_batches*FLAGS.batch_size, params["num_classes"] ) )
+
         # iteration index
         idx = tf.placeholder(tf.int32)
         # activation of a single batch
@@ -250,36 +253,11 @@ def main(unused_args):
         a2 = tf.placeholder(tf.float32, shape = (FLAGS.batch_size, args.num_hidden))
         a3 = tf.placeholder(tf.float32, shape = (FLAGS.batch_size, args.num_hidden ) )
         a4 = tf.placeholder(tf.float32, shape = (FLAGS.batch_size, params["num_classes"] ) )
-        # assign activation functions
-        assign_activation = [[],[],[],[],[]]
-        scatter = tf.scatter_nd(tf.expand_dims(tf.range(idx*100,idx*100+FLAGS.batch_size), axis=1), a0, tf.shape(a0_all))
-        assign_activation[0] = a0_all.assign(scatter)
-        scatter = tf.scatter_nd(tf.expand_dims(tf.range(idx*100,idx*100+FLAGS.batch_size), axis=1), a1, tf.shape(a1_all))
-        assign_activation[1] = a1_all.assign(scatter)
-        scatter = tf.scatter_nd(tf.expand_dims(tf.range(idx*100,idx*100+FLAGS.batch_size), axis=1), a2, tf.shape(a2_all))
-        assign_activation[2] = a2_all.assign(scatter)
-        scatter = tf.scatter_nd(tf.expand_dims(tf.range(idx*100,idx*100+FLAGS.batch_size), axis=1), a3, tf.shape(a1_all))
-        assign_activation[3] = a3_all.assign(scatter)
-        scatter = tf.scatter_nd(tf.expand_dims(tf.range(idx*100,idx*100+FLAGS.batch_size), axis=1), a4, tf.shape(a4_all))
-        assign_activation[4] = a4_all.assign(scatter)
+
 
 
 
       
-    def compute_cosine_distances(a, b):
-        # x shape is n_a * dim
-        # y shape is n_b * dim
-        # results shape is n_a * n_b
-        a = tf.transpose(a)
-        b = tf.transpose(b)
-        
-        #similarity = tf.reduce_sum(a[:, tf.newaxis] * b, axis=-1)
-        # Only necessary if vectors are not normalized
-        #similarity /= tf.norm(a[:, tf.newaxis], axis=-1) * tf.norm(b, axis=-1)
-        normalize_a = tf.nn.l2_normalize(a,1)        
-        normalize_b = tf.nn.l2_normalize(b,1)
-        similarity = tf.abs(tf.matmul(normalize_a, normalize_b, transpose_b=True))
-        return similarity
     
 
         
@@ -288,7 +266,7 @@ def main(unused_args):
         cal_cosine2 = opt._score_cosine[1].assign(compute_cosine_distances(a1_all, a2_all))
         cal_cosine3 = opt._score_cosine[2].assign(compute_cosine_distances(a2_all, a3_all))
         cal_cosine4 = opt._score_cosine[3].assign(compute_cosine_distances(a3_all, tf.nn.softmax(a4_all, axis=1, name="fc_softmax")))
-
+        
         weights = opt.get_weights()
         rand_cosine1 = opt._score_cosine[0].assign(tf.random.uniform(weights[0].shape))
         rand_cosine2 = opt._score_cosine[1].assign(tf.random.uniform(weights[1].shape))
@@ -401,6 +379,7 @@ def main(unused_args):
             train_loss, train_accuracy = 0, 0
             val_loss, val_accuracy = 0, 0
             cnt_t = 0
+            print("Computing accuracy time",  time.time() - tic_start_accuracy)
             sess.run(train_iterator, feed_dict = {placeholder_X: X_train, placeholder_y: y_train})
             
             
@@ -408,9 +387,7 @@ def main(unused_args):
             ##############   summary   #################
             np.savetxt(FLAGS.save_path +"results.txt", metrics)
                 
-                
-            # Write logs at every test iteration.
-            #summary_writer.add_summary(summary, i)
+            
             log_str = 'Loss test: %.4f, Accuracy test: %.4f' % ( test_loss, test_accuracy)
             print(log_str, flush=True) 
             log_str =  '\nglobal_sparsity_val: %.4f : Layer sparsities: %.4f, %.4f, %.4f, %.4f ' % (global_sparsity_val, 
@@ -420,7 +397,7 @@ def main(unused_args):
    
             
             
-            print("Computing accuracy time",  time.time() - tic_start_accuracy)
+            
           ##################################################################################
           ###############             Compute cosine similarity        #####################
           ##################################################################################
@@ -429,79 +406,58 @@ def main(unused_args):
             import numpy as np
             tic3 = time.time() 
             
-            mask_vals = sess.run(pruning.get_masks())
-            for idx_l in range(len(mask_vals)):
-                mask = mask_vals[idx_l].reshape(mask_vals[idx_l].shape[0]*mask_vals[idx_l].shape[1])
-                mask_idx = np.where(mask != 0)[0]
-                w = [v for v in tf.global_variables() if v.name == "layer"+str(idx_l+1)+"/weights:0"][0]
-                w = sess.run(w)
-                m = w.shape[0]
-                n = w.shape[1]
-                print("sparsity of layer ", idx_l+1, " (shape = ",w.shape,")= ",1 - mask_idx.shape[0]/ (w.shape[0]*w.shape[1]), flush=True)
-                
-                w_1d = w.reshape(w.shape[0]*w.shape[1])
-                
-                path_save_weights = FLAGS.save_path + "weights/layer"+str(idx_l+1)+"/"
-                check_path(path_save_weights)
-                check_path(path_save_weights+ "distribution_plots/")
-                w_new = np.zeros(w_1d.shape[0])
-                w_new[mask_idx] = w_1d[mask_idx]
-                w_new = w_new.reshape((m,n))
-                #print(w_new.shape)
-                if int(i // (num_batches))% 25 == 0 or int(i // (num_batches))==1:
-                    with open(path_save_weights + "w"+str(idx_l+1)+"_"+str(int(i // (num_batches)))+".npy", 'wb') as f:
-                        np.save(f, w_new)
-                
-                from matplotlib import pyplot as plt
-                import numpy as np
-                heights,bins = np.histogram(w_1d[mask_idx],bins=100)
-                heights = heights/sum(heights)
-                plt.bar(bins[:-1],heights,width=(max(bins) - min(bins))/len(bins), alpha=0.5)
-                plt.savefig(path_save_weights+ "distribution_plots/w_"+str(idx_l+1)+"_" +  str(int(i // (num_batches))) +".png", bbox_inches='tight')
-                plt.close() 
-        
-        
+
             if FLAGS.training_method in ['cte', 'ctre_sim'] or (FLAGS.training_method in ['ctre'] and not flag_ctre):
                 #tic1 = time.time() 
                 print("@@@@ computing cosine @@@@")
-                sess.run(cal_cosine1)
-                sess.run(cal_cosine2)
-                sess.run(cal_cosine3)
-                sess.run(cal_cosine4)
-                c0 = sess.run(opt._score_cosine[0])
-                c1 = sess.run(opt._score_cosine[1])
-                c2 = sess.run(opt._score_cosine[2])
-                c3 = sess.run(opt._score_cosine[3])
+                a02 = [];a12 = [];a22 = [];a32 = [];a42 = [];
+                sess.run(train_iterator, feed_dict = {placeholder_X: X_train, placeholder_y: y_train})
+                cnt = 0
+                try:
+                    while True:
+                        a0_Val, a1_Val , a2_Val,\
+                            a3_Val,a4_Val = sess.run([data_X, all_layers[0],\
+                                            all_layers[1],all_layers[2],all_layers[3]],
+                                            feed_dict = {handle: train_val_string})
+                        a02.extend(a0_Val)
+                        a12.extend(a1_Val)      
+                        a22.extend(a2_Val)      
+                        a32.extend(a3_Val)      
+                        a42.extend(a4_Val)   
+                except tf.errors.OutOfRangeError:
+                    pass
+                
+                sess.run(cal_cosine1,feed_dict = {a0_all:a02[:num_batches*FLAGS.batch_size], a1_all:a12[:num_batches*FLAGS.batch_size]})
+                sess.run(cal_cosine2,feed_dict = {a1_all:a12[:num_batches*FLAGS.batch_size], a2_all:a22[:num_batches*FLAGS.batch_size]})
+                sess.run(cal_cosine3,feed_dict = {a2_all:a22[:num_batches*FLAGS.batch_size], a3_all:a32[:num_batches*FLAGS.batch_size]})
+                sess.run(cal_cosine4,feed_dict = {a3_all:a32[:num_batches*FLAGS.batch_size], a4_all:a42[:num_batches*FLAGS.batch_size]})  
+             
+                print("Computing cosine matrix time = ", time.time() - tic3, flush=True)
+            
             elif  FLAGS.training_method in ['ctre'] and flag_ctre:
                 print("random addition")
                 sess.run(rand_cosine1)
                 sess.run(rand_cosine2)
                 sess.run(rand_cosine3)
                 sess.run(rand_cosine4)
-            # reset activations
-            sess.run(reset_a_all_0)
-            sess.run(reset_a_all_1)
-            sess.run(reset_a_all_2)
-            sess.run(reset_a_all_3)
-            sess.run(reset_a_all_4)
-   
+        
             
-          _, l, acc, a0_Val, a1_Val , a2_Val,\
-                        a3_Val,a4_Val = sess.run([train_op, loss, accuracy, data_X, all_layers[0],\
-                                        all_layers[1],all_layers[2],all_layers[3]],
-                                        feed_dict = {handle: train_val_string})
+            sess.run(train_iterator, feed_dict = {placeholder_X: X_train, placeholder_y: y_train})
+
+            log_str = 'Loss test: %.4f, Accuracy test: %.4f' % ( test_loss, test_accuracy)
+            print(log_str, flush=True) 
+            log_str =  '\nglobal_sparsity_val: %.4f : Layer sparsities: %.4f, %.4f, %.4f, %.4f ' % (global_sparsity_val, 
+                weight_sparsity[0], weight_sparsity[1], weight_sparsity[2], weight_sparsity[3])
+            print(log_str, flush=True)
+                
+          ##################################################################################
+          ###########   training itertion
+
+          _, l, acc = sess.run([train_op, loss, accuracy], feed_dict = {handle: train_val_string})
           train_loss += l
           train_accuracy += acc
           cnt_t += 1
-    
-          ## assign activations   
-          if FLAGS.training_method in ['cte', 'ctre', 'ctre_sim'] :
-              sess.run(assign_activation[0],feed_dict = {a0:a0_Val, idx: i % (num_batches)})
-              sess.run(assign_activation[1],feed_dict = {a1:a1_Val, idx: i % (num_batches)})
-              sess.run(assign_activation[2],feed_dict = {a2:a2_Val, idx: i % (num_batches)})
-              sess.run(assign_activation[3],feed_dict = {a3:a3_Val, idx: i % (num_batches)})
-              sess.run(assign_activation[4],feed_dict = {a4:a4_Val, idx: i % (num_batches)})
-              
+
           weight_sparsity, global_sparsity_val = sess.run([weight_sparsity_levels, global_sparsity])
 
 

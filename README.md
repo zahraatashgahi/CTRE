@@ -25,13 +25,13 @@ We run this code on Python 3. Following Python packages have to be installed bef
 ### Reference
 If you use this code, please consider citing the following paper:
 ```
-@misc{atashgahi2020quick,
-      title={Quick and Robust Feature Selection: the Strength of Energy-efficient Sparse Training for Autoencoders}, 
-      author={Zahra Atashgahi and Ghada Sokar and Tim van der Lee and Elena Mocanu and Decebal Constantin Mocanu and Raymond Veldhuis and Mykola Pechenizkiy},
-      year={2020},
-      eprint={2012.00560},
-      archivePrefix={arXiv},
-      primaryClass={cs.LG}
+@article{atashgahi2022brain,
+  title={A brain-inspired algorithm for training highly sparse neural networks},
+  author={Atashgahi, Zahra and Pieterse, Joost and Liu, Shiwei and Mocanu, Decebal Constantin and Veldhuis, Raymond and Pechenizkiy, Mykola},
+  journal={Machine Learning},
+  pages={1--42},
+  year={2022},
+  publisher={Springer}
 }
 ```
 
